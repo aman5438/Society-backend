@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+// === ENUMS ===
+
+enum Role {
+  SOCIETY_ADMIN
+  FLAT_OWNER
+  TENANT
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  DEACTIVATED
+}
+
+enum FlatStatus {
+  OCCUPIED
+  VACANT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NOCRequestType {
+  OWNER_SELLING
+  TENANT_LEAVING
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  email            String            @unique
+  password         String
+  name             String
+  phone            String?
+  role             Role
+  status           UserStatus
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  flatsOwned       Flat[]            @relation("Owner")
+  flatOccupied     Flat?             @relation("Tenant")
+  signupRequests   SignupRequest[]
+  auditLogs        AuditLog[]
+  nocRequests      NOCRequest[]
+  adminAssignments AdminAssignment[]
+  signupApprovals  SignupRequest[]   @relation("SignupAdmin")
+}
+
+
+model Society {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  societyCode      String            @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  subSocieties     SubSociety[]
+  flats            Flat[]
+  signupRequests   SignupRequest[]
+  nocRequests      NOCRequest[]
+  adminAssignments AdminAssignment[]
+}
+
+model SubSociety {
+  id               Int               @id @default(autoincrement())
+  name             String
+  societyId        Int
+  society          Society           @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  flats            Flat[]
+  adminAssignments AdminAssignment[]
+}
+
+
+model AdminAssignment {
+  id           Int         @id @default(autoincrement())
+  userId       Int
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  societyId    Int?
+  society      Society?    @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  subSocietyId Int?
+  subSociety   SubSociety? @relation(fields: [subSocietyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([userId, societyId, subSocietyId])
+  @@index([userId])
+  @@index([societyId])
+  @@index([subSocietyId])
+}
+
+model Flat {
+  id           Int          @id @default(autoincrement())
+  flatNumber   String
+  type         String?
+  societyId    Int
+  society      Society      @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  subSocietyId Int?
+  subSociety   SubSociety?  @relation(fields: [subSocietyId], references: [id], onDelete: SetNull)
+  ownerId      Int?
+  owner        User?        @relation("Owner", fields: [ownerId], references: [id], onDelete: SetNull)
+  tenantId     Int?         @unique
+  tenant       User?        @relation("Tenant", fields: [tenantId], references: [id], onDelete: SetNull)
+  status       FlatStatus
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  nocRequests  NOCRequest[]
+
+  @@unique([flatNumber, societyId, subSocietyId])
+  @@index([ownerId])
+  @@index([tenantId])
+  @@index([societyId])
+}
+
+model SignupRequest {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  societyId       Int
+  society         Society       @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  flatNumber      String
+  role            Role
+  adminId         Int?          
+  admin           User?         @relation("SignupAdmin", fields: [adminId], references: [id])
+  documents       Json[]
+  status          RequestStatus
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([societyId])
+}
+
+model NOCRequest {
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  societyId       Int
+  society         Society        @relation(fields: [societyId], references: [id], onDelete: Cascade)
+  flatId          Int
+  flat            Flat           @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  requestType     NOCRequestType
+  status          RequestStatus
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([societyId])
+  @@index([flatId])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  entityId   Int?
+  entityType String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}

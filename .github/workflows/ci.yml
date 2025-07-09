@@ -1,0 +1,32 @@
+name: CI/CD Pipeline for Society Backend
+
+on:
+  pull_request:
+  push:
+    branches: [ main ] # change branch if needed
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run lint check
+        run: npm run lint
+
+      # - name: Run tests
+      #   run: npm run test
+
+      - name: Build NestJS
+        run: npm run build
