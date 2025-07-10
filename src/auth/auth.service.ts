@@ -3,12 +3,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { SignupDto } from './dto/signup.dto';
 import { JwtService } from '@nestjs/jwt/dist/jwt.service';
+import { FileUploadService } from 'src/shared/file-upload.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private fileUploadService: FileUploadService,
   ) {}
 
   async getDashboardCounts() {
@@ -71,11 +73,14 @@ export class AuthService {
       throw new UnauthorizedException('No admin assigned to this society');
     }
 
-    const documentMetadata = files?.map((file) => ({
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-    }));
+    const documentMetadata = await Promise.all(
+      files.map(async (file) => ({
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+        url: await this.fileUploadService.upload(file), // ✅ now allowed
+      })),
+    );
 
     await this.prisma.signupRequest.create({
       data: {

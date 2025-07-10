@@ -7,6 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { JwtStrategy } from './auth.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
+import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RolesGuard } from './roles.guard';
       secret: process.env.JWT_SECRET_KEY,
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '1d' },
     }),
+    SharedModule,
   ],
   providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
   controllers: [AuthController],
