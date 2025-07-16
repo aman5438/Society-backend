@@ -8,7 +8,7 @@ import { JwtStrategy } from './auth.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { SharedModule } from 'src/shared/shared.module';
-
+import { MailerService } from '../mailer/mailer.service';
 @Module({
   imports: [
     PrismaModule,
@@ -19,7 +19,13 @@ import { SharedModule } from 'src/shared/shared.module';
     }),
     SharedModule,
   ],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    MailerService,
+  ],
   controllers: [AuthController],
 })
 export class AuthModule {}

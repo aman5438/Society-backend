@@ -4,13 +4,14 @@ import * as bcrypt from 'bcrypt';
 import { SignupDto } from './dto/signup.dto';
 import { JwtService } from '@nestjs/jwt/dist/jwt.service';
 import { FileUploadService } from 'src/shared/file-upload.service';
-
+import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private fileUploadService: FileUploadService,
+    private mailerService: MailerService,
   ) {}
 
   async getDashboardCounts() {
@@ -35,38 +36,18 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
-
     if (existingUser) {
       throw new UnauthorizedException('Email already exists');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        phone,
-        role,
-        status: 'PENDING',
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User creation failed');
-    }
-
     const adminAssignment = await this.prisma.adminAssignment.findFirst({
       where: {
-        societyId: societyId,
-        user: {
-          role: 'SOCIETY_ADMIN',
-        },
+        societyId,
+        user: { role: 'SOCIETY_ADMIN' },
       },
-      include: {
-        user: true,
-      },
+      include: { user: true },
     });
 
     if (!adminAssignment) {
@@ -78,39 +59,65 @@ export class AuthService {
         originalName: file.originalname,
         mimeType: file.mimetype,
         size: file.size,
-        url: await this.fileUploadService.upload(file), // ✅ now allowed
+        url: await this.fileUploadService.upload(file),
       })),
     );
 
-    await this.prisma.signupRequest.create({
-      data: {
-        userId: user.id,
-        societyId,
-        flatNumber: String(flatNumber),
-        role,
-        documents: documentMetadata,
-        status: 'PENDING',
-        adminId: adminAssignment.userId, // Assign the admin who will approve this request
-      },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          phone,
+          role,
+          status: 'PENDING',
+        },
+      });
+
+      await tx.signupRequest.create({
+        data: {
+          userId: user.id,
+          societyId,
+          flatNumber: String(flatNumber),
+          role,
+          documents: documentMetadata,
+          status: 'PENDING',
+        },
+      });
+
+      const flatUpdateData =
+        role === 'FLAT_OWNER'
+          ? { ownerId: user.id }
+          : role === 'TENANT'
+            ? { tenantId: user.id }
+            : {};
+
+      await tx.flat.updateMany({
+        where: {
+          flatNumber: String(flatNumber),
+          societyId,
+          status: 'VACANT',
+        },
+        data: flatUpdateData,
+      });
+
+      return user;
     });
 
-    const flatUpdateData =
-      role === 'FLAT_OWNER'
-        ? { ownerId: user.id }
-        : role === 'TENANT'
-          ? { tenantId: user.id }
-          : {};
-
-    await this.prisma.flat.updateMany({
-      where: {
-        flatNumber: String(flatNumber),
-        societyId: societyId,
-        status: 'VACANT',
+    // Only after all DB work is successful, send email
+    await this.mailerService.notifyAdminOfSignup(
+      adminAssignment.user.email,
+      adminAssignment.user.name,
+      {
+        name: result.name,
+        email: result.email,
+        phone: result.phone || 'N/A',
+        role: result.role,
       },
-      data: flatUpdateData,
-    });
+    );
 
-    return { message: 'Signup request submitted', userId: user.id };
+    return { message: 'Signup request submitted', userId: result.id };
   }
 
   async login(data: { email: string; password: string }) {
@@ -148,10 +155,8 @@ export class AuthService {
     });
 
     const resetLink = `${process.env.SOCIETY_FRONTEND_URL}/reset-password?token=${token}`;
-
-    console.log(`Password reset link: ${resetLink}`);
-
-    return { message: 'Password reset link sent to your email.', resetLink };
+    await this.mailerService.sendForgotPasswordEmail(user.email, resetLink);
+    return { message: 'Password reset link sent to your email.' };
   }
 
   async resetPassword(token: string, newPassword: string) {

@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma, RequestStatus, UserStatus } from '@prisma/client';
 import { UpdateFlatDto } from './dto/update-flat.dto';
+import { MailerService } from 'src/mailer/mailer.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 export enum Role {
   FLAT_OWNER = 'FLAT_OWNER',
@@ -10,7 +12,10 @@ export enum Role {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private mailerService: MailerService,
+  ) {}
 
   async getDashboardStats(adminId: number) {
     const assignments = await this.prisma.adminAssignment.findMany({
@@ -55,7 +60,6 @@ export class AdminService {
       this.prisma.signupRequest.count({
         where: {
           status: 'PENDING',
-          adminId,
         },
       }),
 
@@ -85,9 +89,9 @@ export class AdminService {
     };
   }
 
-  async getPendingSignupRequests(adminId: number) {
+  async getPendingSignupRequests() {
     return this.prisma.signupRequest.findMany({
-      where: { status: RequestStatus.PENDING, adminId: adminId },
+      where: { status: RequestStatus.PENDING },
       include: {
         user: true,
         society: true,
@@ -98,6 +102,7 @@ export class AdminService {
   async updateSignupStatus(id: number, status: RequestStatus) {
     const request = await this.prisma.signupRequest.findUnique({
       where: { id },
+      include: { user: true },
     });
 
     if (!request) throw new NotFoundException('Signup request not found');
@@ -141,9 +146,30 @@ export class AdminService {
           data: updateData,
         });
       }
+
+      await this.mailerService.sendTemplate(
+        request.user.email,
+        'Signup Approved',
+        'approval',
+        {
+          name: request.user.name,
+          loginUrl: `${process.env.SOCIETY_FRONTEND_URL}/login`,
+        },
+      );
     }
 
-    // Optional: Create audit log
+    if (status === 'REJECTED') {
+      await this.mailerService.sendTemplate(
+        request.user.email,
+        'Signup Rejected',
+        'rejection',
+        {
+          name: request.user.name,
+          reason: 'Your signup request was rejected by the admin.',
+        },
+      );
+    }
+
     await this.prisma.auditLog.create({
       data: {
         userId: request.userId,
@@ -248,6 +274,23 @@ export class AdminService {
     }
   }
 
+  async updateUser(id: number, data: UpdateUserDto) {
+    try {
+      const user = await this.prisma.user.update({
+        where: { id: Number(id) },
+        data: {
+          name: data.name,     
+          email: data.email,
+          phone: data.phone,
+          role: data.role as 'FLAT_OWNER' | 'TENANT',
+        },
+      });
+      return user;
+    } catch {
+      return null;
+    }
+  }
+
   async deleteFlat(id: number) {
     try {
       await this.prisma.flat.delete({
@@ -257,5 +300,19 @@ export class AdminService {
     } catch {
       return false;
     }
+  }
+
+  async getById(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+      },
+    });
   }
 }

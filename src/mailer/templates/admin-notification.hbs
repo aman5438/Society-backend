@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>New Signup Request</title>
+  </head>
+  <body>
+    <p>Hello {{adminName}},</p>
+
+    <p>A new user has requested access to your society portal. Here are the details:</p>
+
+    <ul>
+      <li><strong>Name:</strong> {{userName}}</li>
+      <li><strong>Email:</strong> {{userEmail}}</li>
+      <li><strong>Phone:</strong> {{userPhone}}</li>
+      <li><strong>Role:</strong> {{userRole}}</li>
+    </ul>
+
+    <p>Please <a href="{{adminPortalUrl}}">click here</a> to log in and approve the request.</p>
+
+    <p>Regards,<br>Society Management Team</p>
+  </body>
+</html>

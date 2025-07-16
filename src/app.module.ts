@@ -9,39 +9,42 @@ import { SocietyService } from './society/society.service';
 import { SocietyModule } from './society/society.module';
 import { FlatsController } from './flats/flats.controller';
 import { FlatsService } from './flats/flats.service';
-import { SignupRequestController } from './signup-request/signup-request.controller';
-import { SignupRequestService } from './signup-request/signup-request.service';
-import { SignupRequestModule } from './signup-request/signup-request.module';
 import { AdminController } from './admin/admin.controller';
 import { AdminModule } from './admin/admin.module';
 import { OwnerModule } from './owner/owner.module';
-import { PrismaService } from './prisma/prisma.service';
 import { PrismaClient } from '@prisma/client';
-
+import { PrismaService } from './prisma/prisma.service';
+import { TenantModule } from './tenant/tenant.module';
+import { ConfigModule } from '@nestjs/config';
+import { MailerModule } from './mailer/mailer.module';
+import { MailerService } from './mailer/mailer.service';
+import { AdminService } from './admin/admin.service';
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    MailerModule,
     PrismaModule,
     AuthModule,
     SocietyModule,
     FlatsModule,
-    SignupRequestModule,
     AdminModule,
     OwnerModule,
+    TenantModule,
   ],
   controllers: [
     AppController,
     SocietyController,
     FlatsController,
-    SignupRequestController,
     AdminController,
   ],
   providers: [
     AppService,
     SocietyService,
     FlatsService,
-    SignupRequestService,
     PrismaService,
     PrismaClient,
+    MailerService,
+    AdminService,
   ],
 })
 export class AppModule {}

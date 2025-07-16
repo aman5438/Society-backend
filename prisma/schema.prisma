@@ -56,7 +56,6 @@ model User {
   auditLogs        AuditLog[]
   nocRequests      NOCRequest[]
   adminAssignments AdminAssignment[]
-  signupApprovals  SignupRequest[]   @relation("SignupAdmin")
 }
 
 
@@ -133,8 +132,6 @@ model SignupRequest {
   society         Society       @relation(fields: [societyId], references: [id], onDelete: Cascade)
   flatNumber      String
   role            Role
-  adminId         Int?          
-  admin           User?         @relation("SignupAdmin", fields: [adminId], references: [id])
   documents       Json[]
   status          RequestStatus
   rejectionReason String?

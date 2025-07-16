@@ -17,6 +17,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { Role } from '@prisma/client';
 import { UpdateFlatDto } from './dto/update-flat.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -33,9 +34,8 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('signup-requests')
-  getAllSignupRequests(@Req() req: AuthenticatedRequest) {
-    const adminId = req.user.sub;
-    return this.adminService.getPendingSignupRequests(adminId);
+  getAllSignupRequests() {
+    return this.adminService.getPendingSignupRequests();
   }
 
   @Post('signup-requests/:id/approve')
@@ -79,5 +79,17 @@ export class AdminController {
     if (!deleted)
       throw new NotFoundException('Flat not found or already deleted');
     return { message: 'Flat deleted successfully' };
+  }
+
+  @Get('me')
+  async getProfile(@Req() req) {
+    const userId = req.user.sub;
+    return this.adminService.getById(userId);
+  }
+
+  @Put('me')
+  async updateProfile(@Req() req, @Body() updateDto: UpdateUserDto) {
+    const userId = req.user.sub;
+    return this.adminService.updateUser(userId, updateDto);
   }
 }

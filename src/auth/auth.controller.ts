@@ -9,16 +9,22 @@ import {
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
-// import { ApiOperation } from '@nestjs/swagger/dist/decorators/api-operation.decorator';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+  @UseInterceptors(FilesInterceptor('document'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Signup payload with documents',
+    type: SignupDto,
+  })
 
   @Post('signup')
-  @UseInterceptors(FilesInterceptor('document'))
   async signup(
     @Body() body: SignupDto,
     @UploadedFiles() files: Express.Multer.File[],
@@ -45,7 +51,10 @@ export class AuthController {
   }
 
   @Post('reset-password')
-  async resetPassword(@Body() body: { token: string; newPassword: string }) {
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    if (!body || !body.token || !body.newPassword) {
+      throw new UnauthorizedException('Token and new password are required');
+    }
     const { token, newPassword } = body;
     if (!token || !newPassword) {
       throw new UnauthorizedException('Token and new password are required');
@@ -53,3 +62,4 @@ export class AuthController {
     return this.authService.resetPassword(token, newPassword);
   }
 }
+
