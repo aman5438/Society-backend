@@ -82,13 +82,16 @@ export class AdminController {
   }
 
   @Get('me')
-  async getProfile(@Req() req) {
+  async getProfile(@Req() req: AuthenticatedRequest) {
     const userId = req.user.sub;
     return this.adminService.getById(userId);
   }
 
   @Put('me')
-  async updateProfile(@Req() req, @Body() updateDto: UpdateUserDto) {
+  async updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() updateDto: UpdateUserDto,
+  ) {
     const userId = req.user.sub;
     return this.adminService.updateUser(userId, updateDto);
   }

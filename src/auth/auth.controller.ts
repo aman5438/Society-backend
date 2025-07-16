@@ -23,7 +23,6 @@ export class AuthController {
     description: 'Signup payload with documents',
     type: SignupDto,
   })
-
   @Post('signup')
   async signup(
     @Body() body: SignupDto,
@@ -62,4 +61,3 @@ export class AuthController {
     return this.authService.resetPassword(token, newPassword);
   }
 }
-

@@ -279,7 +279,7 @@ export class AdminService {
       const user = await this.prisma.user.update({
         where: { id: Number(id) },
         data: {
-          name: data.name,     
+          name: data.name,
           email: data.email,
           phone: data.phone,
           role: data.role as 'FLAT_OWNER' | 'TENANT',

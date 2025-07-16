@@ -15,7 +15,7 @@ export class SignupDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'password123'})
+  @ApiProperty({ example: 'password123' })
   @IsString()
   @IsNotEmpty()
   password: string;
@@ -44,7 +44,7 @@ export class SignupDto {
   @IsNumber()
   flatNumber: number;
 
-  @ApiProperty({ example: '[]', type: 'array', items: { type: 'object' } }) 
+  @ApiProperty({ example: '[]', type: 'array', items: { type: 'object' } })
   @IsOptional()
   documents?: any[];
 }
